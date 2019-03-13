@@ -192,7 +192,7 @@ class PreprocessingInterface(object):
 
     @staticmethod
     def remove_digits(tokens: list):
-        return [t for t in tokens if not t.isdigit()]
+        return [t for t in tokens if not t.strip().isdigit()]
 
     @staticmethod
     def contains_digits(token: str) -> bool:
@@ -650,10 +650,12 @@ class PreprocessingInterface(object):
         lemmatized = self.lemmatize_tokens_with_mystem(cut_by_len)
         return lemmatized
 
-    def apply_short_pipeline(self, raw: str) -> Tokenlist:
+    def apply_short_pipeline(self, subject, description: str) -> Tokenlist:
         """ Preprocessing for manual input in window form on client-side """
-        normalized = self.normalize(raw)
-        tokenized = self.tokenize(normalized)
+        merged_text = self.merge_ticket_fields(subject, description)
+        tokenized = self.razdel_tokenize(merged_text)
+        no_stops = self.remove_stopwords(tokenized)
+        no_digits = self.remove_digits(no_stops)
         # no_punct = self.remove_punct(tokenized)
         # no_stopwords = self.remove_stopwords(no_punct)
         # lemmatized = self.lemmatize_with_pymorphy(no_stopwords)

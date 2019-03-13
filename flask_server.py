@@ -52,8 +52,8 @@ def classify():
         logger.error(str(e))
         return jsonify({"error": str(e)}), 500
 
+"""
 @app.route('/update', methods=['POST'])
-@auth.login_required
 def update():
     try:
         req = request_handler.ClassifyRequestHandler(request)
@@ -62,10 +62,11 @@ def update():
     except BaseException as e:
         logger.error(str(e))
         return jsonify({"error": str(e)}), 500
+"""
 
 if __name__ == "__main__":
     # Model interface
     mdl = model_adapter.ModelAdapter(proj_path)
     pp = preprocessing.PreprocessingAdapter()
-    query_interface = db_interface.QueryInterface()
+    # query_interface = db_interface.QueryInterface()
     app.run(host='192.168.112.1', port=5012, debug=False, use_reloader=False)

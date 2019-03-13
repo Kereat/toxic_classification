@@ -67,7 +67,7 @@ class PreprocessingInterface(object):
 
     def filter_mail_lines(self, raw: str):
         paragraphs = raw.split('\n') # TODO: Try tokenizers
-        lines = [p for p in paragraphs if not self.is_forwarding(line)]
+        lines = [line for line in paragraphs if not self.is_forwarding(line)]
         text = ' '.join(lines)
         text = text.replace(
             'добрый день', '').replace(

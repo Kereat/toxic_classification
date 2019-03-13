@@ -19,8 +19,6 @@ from natasha import NamesExtractor
 from alphabet_detector import AlphabetDetector
 
 import word_lists  # , it_ru_dict
-import mail_preprocessing
-import mail_preprocessing_updated
 
 # Plotting
 import matplotlib.pyplot as plt
@@ -40,7 +38,6 @@ class PreprocessingInterface(object):
         self.names_extractor = NamesExtractor()
         self.pymorphy = pymorphy2.MorphAnalyzer()
         self.alphabet_detector = AlphabetDetector()
-        self.mail_cleaner = mail_preprocessing_updated.SignatureRemover()
         self.fallback_counter = 0
 
         # Dicts
@@ -111,15 +108,7 @@ class PreprocessingInterface(object):
         and cut it
         """
         pass
-            
-    def cutoff_mail(self, raw: str) -> str:
-        try:
-            return self.mail_cleaner.remove(raw)
-        except BaseException as e:
-            self.fallback_counter += 1
-            logger.warning("Doge cutoff failed, falling back: {}".format(self.fallback_counter))
-            # return self.cut_signatures(raw)
-            return raw
+
         
     # ======================================== #
     # ########## STRING PROCESSING ########### #
@@ -308,11 +297,7 @@ class PreprocessingInterface(object):
     
     def get_vocab(self, tokenized_texts: pd.Series) -> set:
         return set(self.series_to_chain(tokenized_texts))
-    
-    def filter_by_vocab(self, text: Tokenlist):
-        if not self.vocab:
-            raise ValueError('PreprocessingInterface.vocab not set')
-        return [t for t in text if t in self.vocab]
+
         
     def remove_stopwords(self, text: Tokenlist, stopwords: list=None) -> Tokenlist:
         if not stopwords:
@@ -641,10 +626,22 @@ class PreprocessingInterface(object):
     # ======================================== #
     # ############## PIPELINES ############### #
     # ======================================== #
+
+    @staticmethod
+    def merge_ticket_fields(subject, description):
+        """ Removes theme copy from description, """
+        if not isinstance(subject, str):
+            subject = ""
+        if not isinstance(description, str):
+            description = ""
+        if description.startswith(subject):
+            return description
+        else:
+            return "{} {}".format(subject, description).strip()
+
     def apply_pipeline(self, raw: str) -> Tokenlist:
         """ Apply all the methods to raw string """
-        signatures_cut = mail_preprocessing.cutoff(raw)
-        normalized = self.normalize(signatures_cut)
+        normalized = self.normalize(raw)
         padded = self.pad_punctuation(normalized)
         tokenized = self.tokenize(padded)
         no_punct = self.remove_punct(tokenized)
@@ -655,11 +652,9 @@ class PreprocessingInterface(object):
 
     def apply_short_pipeline(self, raw: str) -> Tokenlist:
         """ Preprocessing for manual input in window form on client-side """
-        signatures_cut = mail_preprocessing.cutoff(raw)
-        normalized = self.normalize(signatures_cut)
+        normalized = self.normalize(raw)
         tokenized = self.tokenize(normalized)
-        no_punct = self.remove_punct(tokenized)
-        no_stopwords = self.remove_stopwords(no_punct)
-        lemmatized = self.lemmatize_with_pymorphy(no_stopwords)
-        filtered = self.filter_by_vocab(lemmatized)
-        return filtered
+        # no_punct = self.remove_punct(tokenized)
+        # no_stopwords = self.remove_stopwords(no_punct)
+        # lemmatized = self.lemmatize_with_pymorphy(no_stopwords)
+        return tokenized

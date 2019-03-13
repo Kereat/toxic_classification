@@ -44,7 +44,7 @@ class PreprocessingInterface(object):
         # self.en_dict = enchant.DictWithPWL("en_US", self.proj_path + '/Preprocessing/Dicts/IT_EN_dict.txt')
         # self.ru_aot_dict = enchant.Dict("ru_RU")
         self.stop_words = set(word_lists.yandex_seo_stopwords +
-                              word_lists.custom_stop_words +
+                              # word_lists.custom_stop_words +
                               stopwords.words('russian'))
         self.unwanted_punct = ",.:!?0#№«»()-\"'_="
         self.unwanted_trans = str.maketrans(self.unwanted_punct,
@@ -653,6 +653,7 @@ class PreprocessingInterface(object):
     def apply_short_pipeline(self, subject, description: str) -> Tokenlist:
         """ Preprocessing for manual input in window form on client-side """
         merged_text = self.merge_ticket_fields(subject, description)
+        normalized = self.normalize(merged_text)
         tokenized = self.razdel_tokenize(merged_text)
         no_stops = self.remove_stopwords(tokenized)
         no_digits = self.remove_digits(no_stops)

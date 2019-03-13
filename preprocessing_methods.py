@@ -650,14 +650,10 @@ class PreprocessingInterface(object):
         lemmatized = self.lemmatize_tokens_with_mystem(cut_by_len)
         return lemmatized
 
-    def apply_short_pipeline(self, subject, description: str) -> Tokenlist:
-        """ Preprocessing for manual input in window form on client-side """
+    def apply_inference_pipeline(self, subject, description: str) -> Tokenlist:
+        """ Preprocessing for model inference in production """
         merged_text = self.merge_ticket_fields(subject, description)
-        normalized = self.normalize(merged_text)
-        tokenized = self.razdel_tokenize(merged_text)
-        no_stops = self.remove_stopwords(tokenized)
-        no_digits = self.remove_digits(no_stops)
-        # no_punct = self.remove_punct(tokenized)
-        # no_stopwords = self.remove_stopwords(no_punct)
-        # lemmatized = self.lemmatize_with_pymorphy(no_stopwords)
+        punct_padded = self.pad_punctuation(merged_text)
+        normalized = self.normalize(punct_padded)
+        tokenized = self.tokenize(normalized)
         return tokenized

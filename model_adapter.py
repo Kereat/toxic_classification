@@ -132,8 +132,8 @@ class SklearnAdapter(object):
 
 class KerasAdapter():
     def __init__(self):
-        self.model = model_from_json(open('my_model_architecture.json').read())# if json
-        self.model.load_weights('my_model_weights.h5')
+        self.model = model_from_json(open('models/classification_model.json').read())  # if json
+        self.model.load_weights('models/classification_model_weights.h5')
 
         self.group_mapping = pd.read_pickle("mappings/group_mapping.pkl")
 
@@ -141,3 +141,21 @@ class KerasAdapter():
         probas = self.model.predict_proba([features])
         predictions_dict = dict(zip(self.group_mapping.group_name.values, probas[0]))
         return predictions_dict
+
+    def get_predictions(self, features):
+        response_dict = {
+            "group_predictions": self.predict_group(features)
+        }
+        return response_dict
+
+class FeatureExtractor():
+    def __init__(self):
+        self.word_vectorizer = joblib.load('models/word_vectorizer.pkl')
+        self.char_vectorizer = joblib.load('models/char_vectorizer.pkl')
+
+    def extract_features(self, raw_text: str):
+        features = np.hstack([
+            self.word_vectorizer.transform(raw_text),
+            self.char_vectorizer.transform(raw_text),
+        ])
+        return features

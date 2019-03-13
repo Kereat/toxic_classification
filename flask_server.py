@@ -4,7 +4,7 @@ import sys
 import base64
 from flask import Flask, jsonify, request
 
-import preprocessing
+import preprocessing_methods
 import model_adapter
 import request_handler
 
@@ -45,7 +45,8 @@ def classify():
         subject = req.json_dict["subject"]
         description =  req.json_dict["description"]
 
-        preprocessed_text = pp.preprocess(subject, description)
+        preprocessed_text = pp.apply_inference_pipeline(subject, description)
+        features =
         response = model_adapter.get_redictions(preprocessed_text)
         return jsonify(response), 200
     except BaseException as e:
@@ -66,7 +67,8 @@ def update():
 
 if __name__ == "__main__":
     # Model interface
+    pp = preprocessing_methods.PreprocessingInterface()
+    feature_extractor =
     model_adapter = model_adapter.KerasAdapter()
-    pp = preprocessing.PreprocessingAdapter()
     # query_interface = db_interface.QueryInterface()
     app.run(host='192.168.112.1', port=5012, debug=False, use_reloader=False)

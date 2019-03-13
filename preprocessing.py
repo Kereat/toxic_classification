@@ -14,7 +14,7 @@ class PreprocessingAdapter(object):
     def preprocess(self, subject: str, description: str) -> str:
         raw = self.merge_description(subject, description)
         cleaned = self.makeshift_clean(raw)
-        lemmas = self.lemmatize_with_mystem(cleaned)
+        # lemmas = self.lemmatize_with_mystem(cleaned)
         return " ".join(lemmas)
 
     def merge_description(self, subject=" ", description=" ") -> str:

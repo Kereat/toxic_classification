@@ -1,12 +1,13 @@
 import dill as pickle
-import logging
 import pandas as pd
 import numpy as np
-
+import keras
+from keras.models import model_from_json
 from scipy.sparse import hstack
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import RidgeClassifier
+import logging
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s %(name)s %(funcName)s %(message)s')
@@ -129,7 +130,14 @@ class SklearnAdapter(object):
         uid = self.type_mapping[self.type_mapping['type_id'] == type_id]["type_uid_b64"].values[0]
         return name, uid
 
+class KerasAdapter():
+    def __init__(self):
+        self.model = model_from_json(open('my_model_architecture.json').read())# if json
+        self.model.load_weights('my_model_weights.h5')
 
+        self.group_mapping = pd.read_pickle("mappings/group_mapping.pkl")
 
-
-
+    def predict_group(self, features):
+        probas = self.model.predict_proba([features])
+        predictions_dict = dict(zip(self.group_mapping.group_name.values, probas[0]))
+        return predictions_dict

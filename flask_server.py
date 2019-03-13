@@ -46,7 +46,7 @@ def classify():
         description =  req.json_dict["description"]
 
         preprocessed_text = pp.preprocess(subject, description)
-        response = mdl.get_redictions(preprocessed_text)
+        response = model_adapter.get_redictions(preprocessed_text)
         return jsonify(response), 200
     except BaseException as e:
         logger.error(str(e))
@@ -66,7 +66,7 @@ def update():
 
 if __name__ == "__main__":
     # Model interface
-    mdl = model_adapter.ModelAdapter(proj_path)
+    model_adapter = model_adapter.KerasAdapter()
     pp = preprocessing.PreprocessingAdapter()
     # query_interface = db_interface.QueryInterface()
     app.run(host='192.168.112.1', port=5012, debug=False, use_reloader=False)

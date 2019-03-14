@@ -155,7 +155,7 @@ class FeatureExtractor():
 
     def extract_features(self, raw_text: str):
         features = np.hstack([
-            self.word_vectorizer.transform(raw_text),
-            self.char_vectorizer.transform(raw_text),
+            self.word_vectorizer.transform(raw_text).toarray(),
+            self.char_vectorizer.transform(raw_text).toarray(),
         ])
         return features

@@ -152,6 +152,7 @@ class KerasAdapter():
         return response_dict
 
 class FeatureExtractor():
+<<<<<<< HEAD
     def __init__(self, tfidf_word, tfidf_char, w2v=None, add_noise=False):
         self.add_noise = True
         self.word_vectorizer = tfidf_word

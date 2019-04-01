@@ -46,8 +46,8 @@ def classify():
         description =  req.json_dict["description"]
 
         preprocessed_text = pp.apply_inference_pipeline(subject, description)
-        features =
-        response = model_adapter.get_redictions(preprocessed_text)
+        features = feature_extractor
+        response = keras_adapter.get_redictions(preprocessed_text)
         return jsonify(response), 200
     except BaseException as e:
         logger.error(str(e))
@@ -68,7 +68,7 @@ def update():
 if __name__ == "__main__":
     # Model interface
     pp = preprocessing_methods.PreprocessingInterface()
-    feature_extractor =
-    model_adapter = model_adapter.KerasAdapter()
+    feature_extractor = model_adapter.FeatureExtractor()
+    keras_adapter = model_adapter.KerasAdapter()
     # query_interface = db_interface.QueryInterface()
     app.run(host='192.168.112.1', port=5012, debug=False, use_reloader=False)

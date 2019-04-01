@@ -1,12 +1,15 @@
-import dill as pickle
+from collections import defaultdict
 import pandas as pd
 import numpy as np
+from scipy.sparse import hstack as sparse_hstack
 import keras
+from keras_text import generators
 from keras.models import model_from_json
-from scipy.sparse import hstack
-from sklearn.externals import joblib
+from gensim.models.wrappers import FastText
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import RidgeClassifier
+import dill as pickle
+import joblib
 import logging
 
 logger = logging.getLogger()
@@ -39,14 +42,14 @@ class SklearnAdapter(object):
     def get_redictions(self, preprocessed_text: str):
         word_features = self.word_vectorizer.transform([preprocessed_text])
         char_features = self.char_vectorizer.transform([preprocessed_text])
-        features = hstack([word_features, char_features])
+        features = sparse_hstack([word_features, char_features])
 
         group_id, group_uid_b64 = self.predict_group(features)
         service_id, service_uid_b64 =  self.predict_service(features)
         type_id, type_uid_b64 = self.predict_type(features)
         priority_id, priority_uid_b64 = self.predict_priority(features)
 
-        features_2 = hstack([
+        features_2 = sparse_hstack([
             features,
             group_id,
             service_id,
@@ -149,13 +152,89 @@ class KerasAdapter():
         return response_dict
 
 class FeatureExtractor():
-    def __init__(self):
-        self.word_vectorizer = joblib.load('models/word_vectorizer.pkl')
-        self.char_vectorizer = joblib.load('models/char_vectorizer.pkl')
+    def __init__(self, tfidf_word, tfidf_char, w2v=None, add_noise=False):
+        self.add_noise = True
+        self.word_vectorizer = tfidf_word
+        self.char_vectorizer = tfidf_char
+        self.w2v = w2v
+        self.max_idf =  max(self.word_vectorizer.idf_)
+        self.word2weight = defaultdict(
+            lambda: self.max_idf,
+            [(w, self.word_vectorizer.idf_[i]) for w, i in self.word_vectorizer.vocabulary_.items()])
 
-    def extract_features(self, raw_text: str):
-        features = np.hstack([
-            self.word_vectorizer.transform(raw_text),
-            self.char_vectorizer.transform(raw_text),
-        ])
+    def extract_tf_idf(self, text):  
+        features = sparse_hstack([
+            self.word_vectorizer.transform([text]),
+            self.char_vectorizer.transform([text])
+        ]).toarray()
         return features
+    
+    def get_noisevec(self, size: int):
+        return (np.random.random_sample((1, self.w2v.layer1_size))*2-1)/10000
+    
+    def get_wordvec(self, token: str):
+        try:
+            return self.w2v[token]
+        except BaseException as e:
+            pass
+            # logger.info("'{}' is not in vocab".format(token))
+            return np.zeros(self.w2v.layer1_size)
+            # return np.rand?
+    
+    def extract_weighted_embedding(self, text):  
+        result = np.mean([self.get_wordvec(w) * self.word2weight[w] for w in text.split()], axis=0)
+        if self.add_noise:
+            noise = self.get_noisevec(self.w2v.layer1_size)  # from -1e-4 to 1e-4
+            result = result + noise
+        return result.reshape(-1, self.w2v.layer1_size)
+        
+    def extract_mean_embedding(self, text):  
+        result = np.mean([self.get_wordvec[w] for w in text.split()], axis=0)
+
+        if self.add_noise:
+            noise = (np.random.random_sample((1, self.w2v.layer1_size))*2-1)/10000  # from -1e-4 to 1e-4
+            mean = mean + noise
+        return mean.reshape(-1, self.w2v.layer1_size)
+            
+    def extract_average_embedding(self, text):
+        vecs = [self.get_wordvec(w) for w in text.split()]
+        vecs = [v if v is not None else np.zeros(self.w2v.layer1_size) for v in vecs]
+        summed = np.sum(vecs, axis=0)
+        averaged = np.divide(summed, len(vecs))
+        if self.add_noise:
+            noise = (np.random.random_sample((1, self.w2v.layer1_size))*2-1)/10000  # from -1e-4 to 1e-4
+            averaged = averaged + noise
+        return averaged.reshape(-1, self.w2v.layer1_size)
+    
+    def extract_symbol_count(self, text):
+        return np.array(len(text)).reshape(-1, 1)
+    
+    def extract_token_count(self, text): 
+        return np.array(len(text.split())).reshape(-1, 1)
+    
+    def extract_unique_token_count(self, text):
+        return np.array(len(list(set(text.split())))).reshape(-1, 1)
+    
+    def extract_features(self, text_batch):
+        batch = []
+            
+        for text in text_batch:
+            # tfidf = self.extract_tf_idf(text)
+            w2v_weight = self.extract_average_embedding(text)
+            sc = self.extract_symbol_count(text)
+            tc = self.extract_token_count(text)
+            utc = self.extract_unique_token_count(text)
+            unique_ratio = utc/tc
+            len_ratio = sc/tc
+            
+            features = np.hstack([
+                # tfidf,
+                w2v_weight,
+                sc,
+                #tc,
+                #utc,
+                #unique_ratio,
+                #len_ratio,
+            ])
+            batch.append(features)
+        return np.array(batch).reshape(len(text_batch), features.shape[1])

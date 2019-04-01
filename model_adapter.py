@@ -152,7 +152,6 @@ class KerasAdapter():
         return response_dict
 
 class FeatureExtractor():
-<<<<<<< HEAD
     def __init__(self, tfidf_word, tfidf_char, w2v=None, add_noise=False):
         self.add_noise = True
         self.word_vectorizer = tfidf_word
@@ -220,7 +219,8 @@ class FeatureExtractor():
         batch = []
             
         for text in text_batch:
-            # tfidf = self.extract_tf_idf(text)
+            tfidf = self.extract_tf_idf(text)
+            # w2v_avg = self.extract_average_embedding(text)
             w2v_weight = self.extract_average_embedding(text)
             sc = self.extract_symbol_count(text)
             tc = self.extract_token_count(text)
@@ -229,13 +229,13 @@ class FeatureExtractor():
             len_ratio = sc/tc
             
             features = np.hstack([
-                # tfidf,
+                tfidf,
                 w2v_weight,
                 sc,
-                #tc,
-                #utc,
-                #unique_ratio,
-                #len_ratio,
+                tc,
+                utc,
+                unique_ratio,
+                len_ratio,
             ])
             batch.append(features)
         return np.array(batch).reshape(len(text_batch), features.shape[1])

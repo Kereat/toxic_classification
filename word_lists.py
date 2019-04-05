@@ -1,39 +1,21 @@
-# List of start phrases.
-# used with startswith() method.
-start_phrases = ("с уважением", "<http://www.aviconsult.ru/>", "с наилучшими")
-
-# Tokens, used to detect signarure sequence.
-# Not used anymore.
-start_tokens = ('http', 'e-mail', 'mailto', 'тел:', 'тел.', 'from:', 'sent:', 'to:', 'subject:', '<', 'ооо',
-                    'сайт:', '>', 'ooo', 'моб:', 'cid', '125040', 'р.т.', 'м.т.', 'с уважением', 'span',
-                    'инициатор', 're:', 'best')
-
-# Hand-collected stop words.
-stop_words_little = ('--', 'оч', 'ави', 'не', 'на', 'добрый', 'день', 'при', 'что', 'по', 'быть', 'мочь',
-                 'чо', 'message', 'span', 'mailto', 'color', 'доб', 'group', 'от', 'после', 'для', 'из', 'все',
-                 'moscow', 'ru', 'ооо', 'from', 'ямского', 'пк', 'мы', 'это', 'все', 'как', 'но', 'нет', 'этот', 'вы',
-                 'здравствуйте', 'наш', 'вот', 'он'
-                     )
-
 # Mystem tags used to filter tokens.
-forbidden_mystem_tags = (
+forbidden_mystem_tags = [
     'отч',
     'имя',
     'фам',
     'гео',
     'обсц',
     'гео=(вин'
-    )
+]
 
-intros = (
+intros = [
     'добрый день',
     'здравствуйте',
     'привет',
     "уважаемые"
-    
-)
+]
 
-forward_markup = (
+mail_forms = [
     're:',
     'fw:',
     'fwd:',
@@ -44,25 +26,29 @@ forward_markup = (
     'from:',
     'cc:',
     'subject:'
-)
+]
 
-signatures = (
-    '<http://www.aviconsult.ru/> ',
-    'best regards',
+
+signatures = [
     'с уважением',
+    'best regards',
     'с наилучшими',
-    '-----original message-----',
-    '---original message--',
+    '<http://www.aviconsult.ru/> ',
     '-- пересылаемое письмо --',
     'with regards',
-    'kind regards',
+    'kind regards'
+]
+
+forward_markup = [
+    '-----original message-----',
+    '---original message--',
     'was created automatically'
     'перенаправленное сообщение',
     'this message',
     'autoreply message',
     'an english version of this message is contained below'
-)
-
+]
+    
 yandex_seo_stopwords = ['a', 'about', 'all', 'am', 'an', 'and', 'any', 'are', 'as', 'at', 'be', 'been', 'but', 'by', 'can',
                         'could', 'do', 'for', 'from', 'has', 'have', 'i', 'if', 'in', 'is', 'it', 'me', 'my', 'no', 'not',
                         'of', 'on', 'one', 'or', 'so', 'that', 'the', 'them', 'there', 'they', 'this', 'to', 'was', 'we',

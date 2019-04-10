@@ -71,3 +71,16 @@ def plot_decision_function(X, y, ax, plot_step=0.02):
     ax.contourf(xx, yy, Z, alpha=0.4)
     ax.scatter(X[:, 0], X[:, 1], alpha=0.8, c=y, edgecolor='k')
     
+def plot_embedding(embeddings, df, cmap="Set1", s=0.3, alpha=1, ax=None, title="2D embeddings"):
+    df["emb_x"] = embeddings[:, 0]
+    df["emb_y"] = embeddings[:, 1]
+    
+    for _id, color in zip(df["group_id"].unique(), ['red', 'green', 'blue']):
+        x = df[df["group_id"]==_id]["emb_x"]
+        y = df[df["group_id"]==_id]["emb_y"]   
+        label = df[df["group_id"]==_id]["group_name"].iloc[0]
+        ax.scatter(x, y, c=color, s=s, label=label,
+                   alpha=alpha, edgecolors='k')
+        ax.legend()
+    plt.setp(ax, xticks=[], yticks=[])
+    plt.title(title, fontsize=18)

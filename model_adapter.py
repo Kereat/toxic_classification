@@ -1,3 +1,4 @@
+from functools import partial
 from collections import defaultdict
 import pandas as pd
 import numpy as np
@@ -11,6 +12,9 @@ from sklearn.linear_model import RidgeClassifier
 import dill as pickle
 import joblib
 import logging
+import preprocessing_methods
+import nltk
+from textacy import preprocess
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s %(name)s %(funcName)s %(message)s')
@@ -152,21 +156,50 @@ class KerasAdapter():
         return response_dict
 
 class FeatureExtractor():
-    def __init__(self, tfidf_word, tfidf_char, w2v=None, add_noise=False):
+    def __init__(self, tfidf_word=None, tfidf_char=None, w2v=None, add_noise=False):
+        self.pp = preprocessing_methods.PreprocessingInterface()
         self.add_noise = True
         self.word_vectorizer = tfidf_word
         self.char_vectorizer = tfidf_char
         self.w2v = w2v
-        self.max_idf =  max(self.word_vectorizer.idf_)
-        self.word2weight = defaultdict(
+        if self.word_vectorizer:
+            self.max_idf =  max(self.word_vectorizer.idf_)
+            self.word2weight = defaultdict(
             lambda: self.max_idf,
             [(w, self.word_vectorizer.idf_[i]) for w, i in self.word_vectorizer.vocabulary_.items()])
 
-    def extract_tf_idf(self, text):  
-        features = sparse_hstack([
-            self.word_vectorizer.transform([text]),
-            self.char_vectorizer.transform([text])
-        ]).toarray()
+    def merge_text(subject, description):
+        """ Removes theme copy from description, """
+        if not isinstance(subject, str): 
+            subject = ""
+        if not isinstance(description, str):
+            description = ""
+        if description.startswith(subject):
+            return description
+        else:
+            return "{} {}".format(subject, description).strip()
+    
+    def preprocessing_pipeline(self, text: str) -> str:
+        from functools import partial
+        
+        pipeline = [
+            pp.replacing_pipeline,
+            preprocess.normalize_whitespace,
+            partial(preprocess.remove_punct, marks=""",.:;!?0%@#№`«»<>()+[]-\/'"_="""),
+            nltk.word_tokenize,
+            pp.replace_digits
+        ]
+        
+        for fn in pipeline:
+            text = fn(text)
+        return " ".join(text)
+
+    def extract_tf_idf_word(self, text):  
+        features = self.word_vectorizer.transform([text]).toarray()
+        return features
+    
+    def extract_tf_idf_char(self, text):  
+        features = self.char_vectorizer.transform([text]).toarray()
         return features
     
     def get_noisevec(self, size: int):
@@ -177,7 +210,6 @@ class FeatureExtractor():
             return self.w2v[token]
         except BaseException as e:
             pass
-            # logger.info("'{}' is not in vocab".format(token))
             return np.zeros(self.w2v.layer1_size)
             # return np.rand?
     
@@ -187,24 +219,15 @@ class FeatureExtractor():
             noise = self.get_noisevec(self.w2v.layer1_size)  # from -1e-4 to 1e-4
             result = result + noise
         return result.reshape(-1, self.w2v.layer1_size)
-        
-    def extract_mean_embedding(self, text):  
-        result = np.mean([self.get_wordvec[w] for w in text.split()], axis=0)
-
-        if self.add_noise:
-            noise = (np.random.random_sample((1, self.w2v.layer1_size))*2-1)/10000  # from -1e-4 to 1e-4
-            mean = mean + noise
-        return mean.reshape(-1, self.w2v.layer1_size)
             
     def extract_average_embedding(self, text):
         vecs = [self.get_wordvec(w) for w in text.split()]
         vecs = [v if v is not None else np.zeros(self.w2v.layer1_size) for v in vecs]
-        summed = np.sum(vecs, axis=0)
-        averaged = np.divide(summed, len(vecs))
+        mean = np.mean(vecs, axis=0)
         if self.add_noise:
             noise = (np.random.random_sample((1, self.w2v.layer1_size))*2-1)/10000  # from -1e-4 to 1e-4
-            averaged = averaged + noise
-        return averaged.reshape(-1, self.w2v.layer1_size)
+            mean = mean + noise
+        return mean.reshape(-1, self.w2v.layer1_size)
     
     def extract_symbol_count(self, text):
         return np.array(len(text)).reshape(-1, 1)
@@ -219,9 +242,10 @@ class FeatureExtractor():
         batch = []
             
         for text in text_batch:
-            tfidf = self.extract_tf_idf(text)
+            tfidf_word = self.extract_tf_idf_word(text)
+            tfidf_char = self.extract_tf_idf_char(text)
             # w2v_avg = self.extract_average_embedding(text)
-            w2v_weight = self.extract_average_embedding(text)
+            w2v_weight = self.extract_weighted_embedding(text)
             sc = self.extract_symbol_count(text)
             tc = self.extract_token_count(text)
             utc = self.extract_unique_token_count(text)
@@ -229,7 +253,9 @@ class FeatureExtractor():
             len_ratio = sc/tc
             
             features = np.hstack([
-                tfidf,
+                tfidf_word,
+                tfidf_char,
+                # w2v_avg,
                 w2v_weight,
                 sc,
                 tc,

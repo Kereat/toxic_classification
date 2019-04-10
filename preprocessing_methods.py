@@ -1,6 +1,7 @@
 from typing import List, Dict
 import re
 import itertools
+from functools import partial
 import string
 import logging
 import collections
@@ -11,6 +12,7 @@ import pandas as pd
 
 # NLP
 import nltk
+from textacy import preprocess
 from razdel import tokenize
 from nltk.corpus import stopwords
 import pymorphy2
@@ -18,7 +20,7 @@ from pymystem3 import Mystem
 from natasha import NamesExtractor
 from alphabet_detector import AlphabetDetector
 
-import word_lists  # , it_ru_dict
+import word_lists
 
 # Plotting
 import matplotlib.pyplot as plt
@@ -33,41 +35,53 @@ Tokenlist = List[str]
 
 class PreprocessingInterface(object):
     def __init__(self):
-        # Pre-loading objects
         self.mystem = Mystem()
         self.names_extractor = NamesExtractor()
         self.pymorphy = pymorphy2.MorphAnalyzer()
         self.alphabet_detector = AlphabetDetector()
-        self.fallback_counter = 0
-
-        # Dicts
-        # self.en_dict = enchant.DictWithPWL("en_US", self.proj_path + '/Preprocessing/Dicts/IT_EN_dict.txt')
-        # self.ru_aot_dict = enchant.Dict("ru_RU")
-        self.stop_words = set(word_lists.yandex_seo_stopwords +
-                              # word_lists.custom_stop_words +
-                              stopwords.words('russian'))
-        self.unwanted_punct = ",.:!?0#№«»()-\"'_="
-        self.unwanted_trans = str.maketrans(self.unwanted_punct,
-                                ''.join([' ' for x in self.unwanted_punct]))
-        self.padding_punct = """!"#$%&\'()*+,;<=>–?[\\]^`{|}~/«»"""
+        
+        self.stop_words = set(word_lists.yandex_seo_stopwords + stopwords.words('russian'))
+        
+        self.padding_punct = """'`"""
         self.full_punct = string.punctuation + '«-–»'
-
-    def normalize_string(self, raw: str):
-        return raw.strip().lower().replace('\xa0', ' ').translate(self.unwanted_trans)
-    
+        
+        self.line_break_trans = str.maketrans('\r\t.', '\n\n\n')
+        
+        self.unwanted_punct = ",.:!?0#№«»()-\"'_="
+        self.unwanted_punct_trans = str.maketrans(self.unwanted_punct, ' '*len(self.unwanted_punct))
+        
+        self.pipeline = [
+            preprocess.fix_bad_unicode,
+            preprocess.replace_urls,
+            preprocess.replace_emails,
+            preprocess.replace_phone_numbers,
+            preprocess.replace_numbers,
+            preprocess.replace_currency_symbols,
+            preprocess.remove_accents,
+            
+            partial(preprocess.remove_punct, marks=""",.:;!?0%@#№`«»<>()+[]-\/'"_="""),
+            preprocess.normalize_whitespace,
+            nltk.word_tokenize,
+            lambda x: " ".join(x)
+            # pp.replace_digits
+        ]
+        
     # ======================================== #
     # ########### MAIL PROCESSING ############ #
     # ======================================== #
-    def is_forwarding(self, paragraph: str):
-        paragraph = paragraph.strip()
-        for each in word_lists.forward_markup:
-            if paragraph.startswith(each):
-                return True
-        return False
-
+    def is_forwarding(self, paragraph: str) -> bool:
+        """ Checks if line contains forwarding message markup """
+        return any([paragraph.startswith(each) for each in word_lists.forward_markup])
+    
+    def is_mail_form(self, paragraph: str) -> bool:
+        """ Checks if line contains mail forms """
+        return any([paragraph.startswith(each) for each in word_lists.mail_forms])
+    
     def filter_mail_lines(self, raw: str):
-        paragraphs = raw.split('\n') # TODO: Try tokenizers
-        lines = [line for line in paragraphs if not self.is_forwarding(line)]
+        """ Line breaks need to be normalized first
+        """
+        paragraphs = raw.split('\n') # TODO: rewrite with sent tokenizer
+        lines = [line for line in paragraphs if not self.is_mail_form(line)]
         text = ' '.join(lines)
         text = text.replace(
             'добрый день', '').replace(
@@ -108,22 +122,7 @@ class PreprocessingInterface(object):
         and cut it
         """
         pass
-
         
-    # ======================================== #
-    # ########## STRING PROCESSING ########### #
-    # ======================================== #
-    @staticmethod
-    def normalize(raw: str) -> str:
-        """ 1. lower
-            2. strip
-            3. remove line break symbols
-        """
-        line_break_cleaning = str.maketrans('\r\t.', '\n\n\n')
-        result = raw.lower().translate(line_break_cleaning).strip()
-        return result
-
-    @staticmethod
     def cut_by_signature(raw: str, signature: str) -> str:
         """ Cut by input search pattern """
         p = re.compile(signature)
@@ -158,6 +157,17 @@ class PreprocessingInterface(object):
             else:
                 return raw
         return raw
+        
+    # ======================================== #
+    # ############# STRING LEVEL ############# #
+    # ======================================== #
+    def preprocessing_pipeline(self, raw: str, pipeline=None):
+        """pipeline: List of prepricessing funcs like """
+        if not pipeline:
+            pipeline = self.pipeline
+        for fn in pipeline:
+            raw = fn(raw)
+        return raw
 
     def pad_punctuation(self, raw: str, punct_list=None) -> str:
         """
@@ -169,37 +179,10 @@ class PreprocessingInterface(object):
         for char in padding_punctuation:
             normal_text = normal_text.replace(char, ' ' + char + ' ')
         return normal_text
-
-    @staticmethod
-    def tokenize(raw: str) -> Tokenlist:
-        return nltk.word_tokenize(raw)
     
     @staticmethod
     def razdel_tokenize(raw: str):
         return [each.text for each in list(tokenize(raw))]
-
-    def is_punct(self, token) -> bool:
-        """ Single and multi-char punct tokens """
-        if len(token)==1:
-            return token in self.full_punct
-        for c in token:
-            if c not in self.full_punct:
-                return False
-        return True
-
-    def remove_punct(self, text: Tokenlist) -> Tokenlist:
-        return [token for token in text if not self.is_punct(token)]
-
-    @staticmethod
-    def remove_digits(tokens: list):
-        return [t for t in tokens if not t.strip().isdigit()]
-
-    @staticmethod
-    def contains_digits(token: str) -> bool:
-        return any(char.isdigit() for char in token)
-
-    def contains_punct(self, token: str) -> bool:
-        return any(self.is_punct(char) for char in token)
 
     def is_cyrillic(self, token) -> bool:
         """ 
@@ -209,7 +192,13 @@ class PreprocessingInterface(object):
             return False
         else:
             return self.alphabet_detector.only_alphabet_chars(token, 'CYRILLIC')
-
+    # ======================================== #
+    # ############## TOKEN LEVEL ############# #
+    # ======================================== #
+    @staticmethod
+    def replace_digits(tokens: list):
+        return [t if not t.isdigit() else "*digit*" for t in tokens]
+    
     # ======================================== #
     # ########### POS/LEMMATIZING ############ #
     # ======================================== #

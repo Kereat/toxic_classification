@@ -7,6 +7,28 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, Dropout, Flatten, InputLayer, Reshape
 from keras.optimizers import SGD, Adam, Adadelta, Adagrad, Adamax, Nadam, RMSprop
 
+def train_baseline(epochs, output_dim, input_dim, batch_size, optimizer, loss, train_generator, test_generator, custom_metrics=None, class_weights=None):
+    model = Sequential()
+    model.add(Dense(output_dim, input_shape=(input_dim,), batch_size=batch_size, activation='softmax')) 
+    model.compile(
+              optimizer=optimizer, # Adagrad(lr=0.1)
+              loss=loss,
+              metrics=['accuracy'])
+    
+    history = model.fit_generator(
+    train_generator,
+    steps_per_epoch=len(train_generator),
+    epochs=epochs,
+    verbose=1,
+    callbacks=[custom_metrics],
+    validation_data=test_generator,
+    validation_steps=len(test_generator),
+    class_weight=class_weights,
+    workers=8,
+    use_multiprocessing=True
+    )
+    return model, history
+
 class CustomMetrics(Callback):
     def __init__(self, validation_data: tuple, test_generator, diff=None):
         self.test_generator = test_generator
@@ -54,25 +76,3 @@ def weighted_categorical_crossentropy(weights):
         return loss
     
     return loss
-
-def train_baseline(epochs, output_dim, input_dim, batch_size, optimizer, loss, train_generator, test_generator, class_weights, custom_metrics):
-    model = Sequential()
-    model.add(Dense(output_dim, input_shape=(input_dim,), batch_size=batch_size, activation='softmax')) 
-    model.compile(
-              optimizer=optimizer, # Adagrad(lr=0.1)
-              loss=loss,
-              metrics=['accuracy'])
-    
-    history = model.fit_generator(
-    train_generator,
-    steps_per_epoch=len(train_generator),
-    epochs=epochs,
-    verbose=1,
-    callbacks=[custom_metrics],
-    validation_data=test_generator,
-    validation_steps=len(test_generator),
-    class_weight=class_weights,
-    workers=8,
-    use_multiprocessing=True
-    )
-    return history

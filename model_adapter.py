@@ -244,7 +244,7 @@ class FeatureExtractor():
         for text in text_batch:
             tfidf_word = self.extract_tf_idf_word(text)
             tfidf_char = self.extract_tf_idf_char(text)
-            # w2v_avg = self.extract_average_embedding(text)
+            w2v_avg = self.extract_average_embedding(text)
             w2v_weight = self.extract_weighted_embedding(text)
             sc = self.extract_symbol_count(text)
             tc = self.extract_token_count(text)
@@ -255,7 +255,7 @@ class FeatureExtractor():
             features = np.hstack([
                 tfidf_word,
                 tfidf_char,
-                # w2v_avg,
+                w2v_avg,
                 w2v_weight,
                 sc,
                 tc,

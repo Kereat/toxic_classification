@@ -25,7 +25,8 @@ def train_baseline(epochs, output_dim, input_dim, batch_size, optimizer, loss, t
     validation_steps=len(test_generator),
     class_weight=class_weights,
     workers=8,
-    use_multiprocessing=True
+    use_multiprocessing=True,
+    shuffle=True
     )
     return model, history
 

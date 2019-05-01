@@ -46,8 +46,8 @@ def classify():
         description =  req.json_dict["description"]
 
         preprocessed_text = pp.apply_inference_pipeline(subject, description)
-        features = feature_extractor
-        response = keras_adapter.get_redictions(preprocessed_text)
+        features = feature_extractor.extract_features(preprocessed_text)
+        response = keras_adapter.get_redictions(features)
         return jsonify(response), 200
     except BaseException as e:
         logger.error(str(e))

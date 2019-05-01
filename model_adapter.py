@@ -154,6 +154,7 @@ class KerasAdapter():
 
 class FeatureExtractor():
     def __init__(self, tfidf_word=None, tfidf_char=None, w2v=None, add_noise=False):
+        self.pp = PreprocessingInterface()
         self.add_noise = True
         self.word_vectorizer = tfidf_word
         self.char_vectorizer = tfidf_char
@@ -212,6 +213,7 @@ class FeatureExtractor():
         batch = []
             
         for text in text_batch:
+            text = pp.apply_inference_pipeline(text)
             tfidf_word = self.extract_tf_idf_word(text)
             tfidf_char = self.extract_tf_idf_char(text)
             w2v_avg = self.extract_average_embedding(text)

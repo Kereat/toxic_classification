@@ -12,9 +12,6 @@ from sklearn.linear_model import RidgeClassifier
 import dill as pickle
 import joblib
 import logging
-import preprocessing_methods
-import nltk
-from textacy import preprocess
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s %(name)s %(funcName)s %(message)s')
@@ -157,7 +154,6 @@ class KerasAdapter():
 
 class FeatureExtractor():
     def __init__(self, tfidf_word=None, tfidf_char=None, w2v=None, add_noise=False):
-        self.pp = preprocessing_methods.PreprocessingInterface()
         self.add_noise = True
         self.word_vectorizer = tfidf_word
         self.char_vectorizer = tfidf_char
@@ -167,32 +163,6 @@ class FeatureExtractor():
             self.word2weight = defaultdict(
             lambda: self.max_idf,
             [(w, self.word_vectorizer.idf_[i]) for w, i in self.word_vectorizer.vocabulary_.items()])
-
-    def merge_text(subject, description):
-        """ Removes theme copy from description, """
-        if not isinstance(subject, str): 
-            subject = ""
-        if not isinstance(description, str):
-            description = ""
-        if description.startswith(subject):
-            return description
-        else:
-            return "{} {}".format(subject, description).strip()
-    
-    def preprocessing_pipeline(self, text: str) -> str:
-        from functools import partial
-        
-        pipeline = [
-            pp.replacing_pipeline,
-            preprocess.normalize_whitespace,
-            partial(preprocess.remove_punct, marks=""",.:;!?0%@#№`«»<>()+[]-\/'"_="""),
-            nltk.word_tokenize,
-            pp.replace_digits
-        ]
-        
-        for fn in pipeline:
-            text = fn(text)
-        return " ".join(text)
 
     def extract_tf_idf_word(self, text):  
         features = self.word_vectorizer.transform([text]).toarray()
